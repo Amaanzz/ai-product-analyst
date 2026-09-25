@@ -1,0 +1,10 @@
+pandas>=2.0
+numpy>=1.24
+scipy>=1.10
+scikit-learn>=1.3
+streamlit>=1.30
+plotly>=5.18
+pytest>=7.4
+fastapi>=0.110
+uvicorn[standard]>=0.27
+# pyarrow>=14.0  # optional: switch processed tables from CSV back to Parquet if installed

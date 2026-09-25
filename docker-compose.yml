@@ -1,0 +1,56 @@
+# Orchestrates three services sharing one image (docker/Dockerfile) and one
+# data volume:
+#   pipeline  -- generates synthetic data + runs ETL once, then exits
+#   api       -- FastAPI backend on :8000
+#   dashboard -- Streamlit app on :8501
+#
+# `api` and `dashboard` wait for `pipeline` to finish successfully before
+# starting, via `condition: service_completed_successfully` (requires Docker
+# Compose v2.20+ -- if your version is older, run `docker compose run
+# pipeline` manually first, then `docker compose up api dashboard`).
+#
+# NOT YET RUN: no `docker` binary was available in the build sandbox (no
+# internet access), so this file has never actually been brought up. Report
+# back any errors from `docker compose up --build`.
+#
+# Usage:
+#   docker compose up --build
+#   API docs:       http://localhost:8000/docs
+#   Dashboard:      http://localhost:8501
+
+services:
+  pipeline:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    command: >
+      sh -c "python src/ingestion/generate_synthetic_data.py --n-users 20000 &&
+             python src/preprocessing/etl.py"
+    volumes:
+      - ./data:/app/data
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      pipeline:
+        condition: service_completed_successfully
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    command: streamlit run dashboard/app.py --server.address=0.0.0.0 --server.port=8501
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      pipeline:
+        condition: service_completed_successfully
