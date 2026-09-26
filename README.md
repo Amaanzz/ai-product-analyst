@@ -9,6 +9,9 @@ actually record. Section 3 documents what was built, why, and exactly what's
 been proven to work vs. what still needs your confirmation.
 
 ---
+### 🚀 Live Demo
+
+**[Open the Live Streamlit Dashboard](https://ai-appuct-analyst-4huugav44koj9kvvntrygq.streamlit.app/)**
 
 ## 1. The problem this project answers
 
