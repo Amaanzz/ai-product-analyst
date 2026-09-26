@@ -1,5 +1,12 @@
+
 import sys
-sys.path.append("src")
+import subprocess
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(PROJECT_ROOT / "src"))
+
+
 
 import pandas as pd
 import streamlit as st
@@ -613,28 +620,69 @@ def metric_card(label, value, note="", tone="neutral"):
     )
 
 
+
+# -----------------------------
 # -----------------------------
 # Data
 # -----------------------------
+DATA_FILES = [
+    PROJECT_ROOT / "data" / "raw" / "users.csv",
+    PROJECT_ROOT / "data" / "processed" / "clean_events.csv",
+    PROJECT_ROOT / "data" / "processed" / "user_features.csv",
+]
+
+@st.cache_resource
+def ensure_demo_data():
+    """Generate the deterministic 20k-user dataset when deployed without data."""
+    if all(path.exists() for path in DATA_FILES):
+        return
+
+    with st.spinner("Preparing the analytics dataset for the dashboard..."):
+        subprocess.run(
+            [
+                sys.executable,
+                str(PROJECT_ROOT / "src" / "ingestion" / "generate_synthetic_data.py"),
+                "--n-users",
+                "20000",
+                "--seed",
+                "42",
+                "--observation-days",
+                "45",
+                "--output-dir",
+                str(PROJECT_ROOT / "data" / "raw"),
+            ],
+            cwd=str(PROJECT_ROOT),
+            check=True,
+        )
+
+        subprocess.run(
+            [
+                sys.executable,
+                str(PROJECT_ROOT / "src" / "preprocessing" / "etl.py"),
+            ],
+            cwd=str(PROJECT_ROOT),
+            check=True,
+        )
+
+
+ensure_demo_data()
+
+
 @st.cache_data
 def load_data():
-    users = pd.read_csv("data/raw/users.csv", parse_dates=["signup_date"])
+    users = pd.read_csv(
+        DATA_FILES[0],
+        parse_dates=["signup_date"],
+    )
     clean_events = pd.read_csv(
-        "data/processed/clean_events.csv",
+        DATA_FILES[1],
         parse_dates=["timestamp"],
     )
-    user_features = pd.read_csv("data/processed/user_features.csv")
+    user_features = pd.read_csv(DATA_FILES[2])
     return users, clean_events, user_features
 
 
-try:
-    users, clean_events, user_features = load_data()
-except FileNotFoundError:
-    st.error(
-        "Data not found. Run `python src/ingestion/generate_synthetic_data.py` "
-        "and `python src/preprocessing/etl.py` first."
-    )
-    st.stop()
+users, clean_events, user_features = load_data()
 
 
 # -----------------------------
